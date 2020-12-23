@@ -31,7 +31,7 @@ module top#(
 		input					Phase_in												,
 		
 		// FPGA与SDRAM硬件接口
-		output 					sdram_clk												,		//	SDRAM时钟信号
+	/*	output 					sdram_clk												,		//	SDRAM时钟信号
 		output 					sdram_cke												,		//  SDRAM时钟有效信号
 		output 					sdram_cs_n												,		//	SDRAM片选信号
 		output 					sdram_ras_n												,		//	SDRAM行地址选通脉冲
@@ -42,7 +42,7 @@ module top#(
 		output 					sdram_udqm												,		//  SDRAM高字节屏蔽
 		output 					sdram_ldqm												,		//  SDRAM低字节屏蔽
 		inout		[15:0]  	sdram_data												,		//  SDRAM数据总线
-		
+	*/	
 		output     reg  key_ledg_o  ='b0  , //jianxxiang
 		output     reg  trans_ledr_o = 'b0,	//yaoshu
 		output     reg  samp_ledy_o ='b0		//caiyang zhishi
