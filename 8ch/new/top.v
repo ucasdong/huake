@@ -29,8 +29,8 @@ module top#(
 		input					Phase_in												,
 		
 		output     reg  		key_ledg_o   = 'b0  									, //jianxxiang
-		output     reg  		trans_ledr_o = 'b0										,	//yaoshu
-		output     reg  		samp_ledy_o  = 'b0											//caiyang zhishi
+		output     reg  		work_led = 'b0										,	//yaoshu
+		output     reg  		trans_ledr_o  = 'b0											//caiyang zhishi
 
 );
 	//assign	rst_n = 1'b1;				
@@ -90,30 +90,64 @@ module top#(
 		
 		reg 		[16:1]	rdsdram_fifo_req			;//ARM 读FIFO使能
 		wire		[15:0]	rdf_dout					;//sdram_fifo输出数据
-		wire		[15:0]	fifo_rst					;//wrfifo_16w_16r_128d复位信号
+		reg 		[00:0]	fifo_rst ='b0   			;//wrfifo_16w_16r_128d复位信号
 		reg					rdf_rdreq					;//sdram_fifo读使能
+		reg                 ad_enble_r = 'b0			;
+		//fifo full state
+		wire        [07:00] full                        ;
+		wire                locked                      ;
+//-------------------------------------------------------
+		wire			AD_CLK_40M							;// AD 时钟  40M 对应采样周期为6 us
+		wire			FSMC_CLK_100M 						;//	FSMC总线处理时钟，读写命令宽度大约为30us
+		//100M PLL
+    PLL_ctrl PLL_ctrl_inst
+   (
+    .CLK_IN1	( clk_25M		),    
+    .CLK_OUT1	( AD_CLK_40M	),     
+    .CLK_OUT2	( FSMC_CLK_100M	),     
+    .RESET		( 'b0			),
+    .LOCKED		( locked		)
+	);     		
+//-------------------------------------------------------
+//-------------------------------------------------------
+reg   [31:00] work_led_cnt = 'b0;
+always@(posedge AD_CLK_40M)
+  if(work_led_cnt >= 32'd20000000)
+   begin
+     work_led_cnt <= 'b0;
+	 work_led     <= ~work_led;
+   end
+   else 
+   work_led_cnt   <= work_led_cnt + 32'b1;
+     
+//-------------------------------------------------------
+		
 		
 reg [31:00] key_led_cnt;
-reg [4:0]   samp_led_cnt = 'd0; 
-reg cs_r = 'b1;
-always@(posedge clk_25M)
+always@(posedge AD_CLK_40M)
   if(key_led_cnt >= Phase_cnt_out ) begin
      key_led_cnt <= #1 'b0;
      key_ledg_o <= #1 ~key_ledg_o ; end
   else
      key_led_cnt <= #1 key_led_cnt + 1'b1;		
-always@(posedge clk_25M)
-    trans_ledr_o <= data_full;			
+always@(posedge AD_CLK_40M)
+    trans_ledr_o <= data_full;	
+//clear fifo 
+always@(posedge AD_CLK_40M)	
+     ad_enble_r <= #1 reg_ad_enble;
+always@(posedge AD_CLK_40M)
+     fifo_rst <= ~ad_enble_r && reg_ad_enble;
+   
 		
 		//例化接口表
 		wire				    data_full				    ;//所有通道数据采集满4096
 		wire			[15:0]	adc_db_i	[1:0]			;
 		wire			[2:0]	adc_os_o	[1:0]			;
 		wire			[15:0]	data_i		[1:0]			;
-		wire			[3:0]	wr_data_n_i					;
+		wire			[1:0]	wr_data_n_i					;
 		
 		assign		adc_db_i[0] = adc_db_i0					;
-		assign		adc_db_i[1] = adc_db_i0					;
+		assign		adc_db_i[1] = adc_db_i1					;
 						
 		assign      adc_os_o0 = adc_os_o[0]					;
 		assign      adc_os_o1 = adc_os_o[1]					;
@@ -125,9 +159,7 @@ always@(posedge clk_25M)
 		wire			[15:0]	data_oc     [3:0]           ;
 		wire			[15:0]	data_od     [3:0]           ;
 		//时钟部分
-		wire			AD_CLK_40M							;// AD 时钟  40M 对应采样周期为6 us
-		wire			SDRAM_CLK_50M						;// SDRAM时钟 为50M
-		wire			FSMC_CLK_100M 						;//	FSMC总线处理时钟，读写命令宽度大约为30us
+
 
 		
 		
@@ -136,7 +168,7 @@ always@(posedge clk_25M)
 
 		reg				[11:0]	rst_ncnt;
 		reg						rst_n_reg;
-		always@(posedge clk_25M) 	
+		always@(posedge AD_CLK_40M) 	
 			if(rst_ncnt <=12'd3000) begin
 				rst_ncnt <= rst_ncnt + 1'b1;
 				rst_n_reg <= 1'b0;  end
@@ -169,16 +201,8 @@ always@(posedge clk_25M)
 
 					
 
-		//100M PLL
-	PLL_ctrl	PLL_ctrl_inst (
-		.areset (1'b0				),
-		.inclk0 ( clk_25M 			),
-		.c0 	( AD_CLK_40M		),
-		.c1 	( SDRAM_CLK_50M 	),
-		.c2 	( FSMC_CLK_100M 	),
-		.c3 	( sdram_clk 		),
-		.locked ( locked			)
-		);
+
+		
 		
 		////////////////////////////////////////////////////////////////////////////////////////		
 		//总线读部分
@@ -192,7 +216,7 @@ always@(posedge clk_25M)
 				{2'b0,ADDR_reg_freq4	}:     mcu_data_out <= reg_freq4			      		;
 				{2'b0,ADDR_reg_freq_phase_l}:  mcu_data_out <= Phase_cnt_out[15:0]      		;
 				{2'b0,ADDR_reg_freq_phase_h}:  mcu_data_out <= Phase_cnt_out[31:16]      		;
-				{2'b0,ADDR_reg_ad_enble	}:     mcu_data_out <= {15'b0,reg_ad_enble}  			;
+				{2'b0,ADDR_reg_ad_enble	}:     mcu_data_out <= {15'b0,reg_ad_enble}  			;//use pos  clear fifo
 				{2'b0,ADDR_reg_ad_reset	}:     mcu_data_out <= {15'b0,reg_ad_reset}	    		;
 				{2'b0,ADDR_reg_ad_fifo_clr}:   mcu_data_out <= {15'b0,reg_ad_fifo_clr}    		;
 				{2'b0,ADDR_reg_ad_status}:     mcu_data_out <= reg_ad_status	     			;
@@ -241,16 +265,12 @@ always@(posedge clk_25M)
 		
 		///AD 模块例化
 		
-		wire			[15:0]	q_data_oa	 	[3:0]		;
-		wire			[15:0]	q_data_ob    	[3:0]       ;
-		wire			[15:0]	q_data_oc    	[3:0]       ;
-		wire			[15:0]	q_data_od    	[3:0]       ;	
-		wire			[255:0]	fifo_datain					;
-		wire			[15:0]	fifo_rd_req					;
-		assign			fifo_datain = {	q_data_od[3],q_data_oc[3],q_data_ob[3],q_data_oa[3],
-										q_data_od[2],q_data_oc[2],q_data_ob[2],q_data_oa[2],
-										q_data_od[1],q_data_oc[1],q_data_ob[1],q_data_oa[1],
-										q_data_od[0],q_data_oc[0],q_data_ob[0],q_data_oa[0]};
+		wire			[15:0]	q_data_oa	 	[1:0]		;
+		wire			[15:0]	q_data_ob    	[1:0]       ;
+		wire			[15:0]	q_data_oc    	[1:0]       ;
+		wire			[15:0]	q_data_od    	[1:0]       ;	
+		reg  			[7:0]	fifo_rd_req  = 'b0			;
+
 		wire			[6:0]	wrusedw		[15:0]		;	
 		wire			[15:0]	wrfifo_gnt_in				;
 		wire			[15:0]	wrfull_flag					;
@@ -262,7 +282,7 @@ always@(posedge clk_25M)
 			for(i=0;i<2;i=i+1) begin	:	AD7606_DR	
 AD7606 U1_AD7606 (
 		.clk_40M		(AD_CLK_40M				), 
-		.ad_start		(ad_start[i]      ), 
+		.ad_start		(ad_start[i]     		), 
 		.wr_data_n_i	(wr_data_n_i[i]			), 
 		.data_i			(data_i[i]				), //参数配置
 		.data_oa		(data_oa[i]				), 
@@ -282,188 +302,100 @@ AD7606 U1_AD7606 (
 		.adc_convst_a_o	(adc_convst_a_o[i]		), 
 		.adc_convst_b_o	(adc_convst_b_o[i]		) 
 		);
-	wrfifo_16w_16r_128d	data_oa_wrfifo_8w_8r_128d (
-		.aclr 			( fifo_rst[i*4 + 0] 	),
-		.data 			( data_oa[i] 			),
-		.wrclk 			( AD_CLK_40M	 		),
-		.wrreq 			( data_rd_ready_o[i] & (wrusedw[i*4 + 0]<= 7'd120) 	),
-		.rdclk 			( AD_CLK_40M 			),
-		.rdreq 			( fifo_rd_req[i*4 + 0] 	),	
-		.q 				( q_data_oa[i] 			),
-		.rdempty 		( rdempty_sig 			),
-		.rdusedw 		( rdusedw_sig 			),
-		.wrfull 		( wrfull_flag[i*4 + 0] 	),
-		.wrusedw 		( wrusedw[i*4 + 0] 		)
-	);	
-		wrfifo_16w_16r_128d	data_ob_wrfifo_8w_8r_128d (
-		.aclr 			( fifo_rst[i*4 + 1]		),
-		.data 			( data_ob[i] 			),
-		.wrclk 			( AD_CLK_40M	 		),
-		.wrreq 			( data_rd_ready_o[i] & (wrusedw[i*4 + 1]<= 7'd120) 	),
-		.rdclk 			( AD_CLK_40M 			),
-		.rdreq 			( fifo_rd_req[i*4 + 1]	),	
-		.q 				( q_data_ob[i] 			),
-		.rdempty 		( rdempty_sig 			),
-		.rdusedw 		( rdusedw_sig 			),
-		.wrfull 		( wrfull_flag[i*4 + 1] 	),
-		.wrusedw 		( wrusedw[i*4 + 1] 		)
-	);	
-		wrfifo_16w_16r_128d	data_oc_wrfifo_8w_8r_128d (
-		.aclr 			( fifo_rst[i*4 + 2]		),
-		.data 			( data_oc[i] 			),
-		.wrclk 			( AD_CLK_40M	 		),
-		.wrreq 			( data_rd_ready_o[i] & (wrusedw[i*4 + 2]<= 7'd120) 	),
-		.rdclk 			( AD_CLK_40M 			),
-		.rdreq 			( fifo_rd_req[i*4 + 2]	),	
-		.q 				( q_data_oc[i] 			),
-		.rdempty 		( rdempty_sig 			),
-		.rdusedw 		( rdusedw_sig 			),
-		.wrfull 		( wrfull_flag[i*4 + 2] 	),
-		.wrusedw 		( wrusedw[i*4 + 2] 		)
-	);	
-		wrfifo_16w_16r_128d	data_od_wrfifo_8w_8r_128d (
-		.aclr 			( fifo_rst[i*4 + 3] 	),
-		.data 			( data_od[i] 			),
-		.wrclk 			( AD_CLK_40M	 		),
-		.wrreq 			( data_rd_ready_o[i] & (wrusedw[i*4 + 3]<= 7'd120) 	),
-		.rdclk 			( AD_CLK_40M 			),
-		.rdreq 			( fifo_rd_req[i*4 + 3]	),	
-		.q 				( q_data_od[i] 			),
-		.rdempty 		( rdempty_sig 			),
-		.rdusedw 		( rdusedw_sig 			),
-		.wrfull 		( wrfull_flag[i*4 + 3] 	),
-		.wrusedw 		( wrusedw[i*4 + 3] 		)
-	);	
-	
+		wrfifo_16w_16r_2048d data_oa_wrfifo_16w_16r_2048d (
+		.rst		   	( fifo_rst				), // input rst
+		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
+		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
+		.din		   	( data_oa[i]			), // input [15 : 0] din
+		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 0]), // input wr_en
+		.rd_en		   	( fifo_rd_req[i*4 + 0]	), // input rd_en
+		.dout		   	( q_data_oa[i]			), // output [15 : 0] dout
+		.full		   	( full[i*4 + 0]	     	) 
+		);	
+		wrfifo_16w_16r_2048d data_ob_wrfifo_16w_16r_2048d (
+		.rst		   	( fifo_rst				), // input rst
+		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
+		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
+		.din		   	( data_ob[i]			), // input [15 : 0] din
+		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 1]), // input wr_en
+		.rd_en		   	( fifo_rd_req[i*4 + 1]	), // input rd_en
+		.dout		   	( q_data_ob[i]			), // output [15 : 0] dout
+		.full		   	( full[i*4 + 1]	     	) 
+		);		
+		wrfifo_16w_16r_2048d data_oc_wrfifo_16w_16r_2048d (
+		.rst		   	( fifo_rst				), // input rst
+		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
+		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
+		.din		   	( data_oc[i]			), // input [15 : 0] din
+		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 2]), // input wr_en
+		.rd_en		   	( fifo_rd_req[i*4 + 2]	), // input rd_en
+		.dout		   	( q_data_oc[i]			), // output [15 : 0] dout
+		.full		   	( full[i*4 + 2]	     	) 
+		);		
+		wrfifo_16w_16r_2048d data_od_wrfifo_16w_16r_2048d (
+		.rst		   	( fifo_rst				), // input rst
+		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
+		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
+		.din		   	( data_od[i]			), // input [15 : 0] din
+		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 3]), // input wr_en
+		.rd_en		   	( fifo_rd_req[i*4 + 3]	), // input rd_en
+		.dout		   	( q_data_od[i]			), // output [15 : 0] dout
+		.full		   	( full[i*4 + 3]	     	) 
+		);		
 		end             			
 		endgenerate 	
 
 ///ARM读使能产生信号
-	reg			[16:1]				rd_sdram_fifo_req;
-	always@(posedge FSMC_CLK_100M) begin
+   reg   muc_rd_n_r;
+   always@(posedge FSMC_CLK_100M)
+		 muc_rd_n_r <= muc_rd_n;
+    
+ 
+
+	always@(posedge FSMC_CLK_100M)begin
+		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad1_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
+		     fifo_rd_req[0] <= 'b1;
+			 reg_ad1_data <= q_data_oa[0];end
+		   else
+		      fifo_rd_req[0] <= 'b0;
+		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad2_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
+		     fifo_rd_req[1] <= 'b1;
+			 reg_ad2_data <= q_data_ob[0];end
+		   else
+		      fifo_rd_req[1] <= 'b0;	
+		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad3_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
+		     fifo_rd_req[2] <= 'b1;
+			 reg_ad3_data <= q_data_oc[0];end
+		   else
+		      fifo_rd_req[2] <= 'b0;
+		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad4_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
+		     fifo_rd_req[3] <= 'b1;
+			 reg_ad4_data <= q_data_od[0];end
+		   else
+		      fifo_rd_req[3] <= 'b0;	
+		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad5_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
+		     fifo_rd_req[4] <= 'b1;
+			 reg_ad5_data <= q_data_oa[1];end
+		   else
+		      fifo_rd_req[4] <= 'b0;
+		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad6_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
+		     fifo_rd_req[5] <= 'b1;
+			 reg_ad6_data <= q_data_ob[1];end
+		   else
+		      fifo_rd_req[5] <= 'b0;
+		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad7_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
+		     fifo_rd_req[6] <= 'b1;
+			 reg_ad6_data <= q_data_oc[1];end
+		   else
+		      fifo_rd_req[6] <= 'b0;	
+		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad8_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
+		     fifo_rd_req[7] <= 'b1;
+			 reg_ad8_data <= q_data_od[1];end
+		   else
+		      fifo_rd_req[7] <= 'b0;			  
+		 end
 	
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad1_data	})
-			rd_sdram_fifo_req[1] <= 1'b1;
-		else
-			rd_sdram_fifo_req[1] <= 1'b0;
-			
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad2_data	})
-			rd_sdram_fifo_req[2] <= 1'b1;
-		else
-			rd_sdram_fifo_req[2] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad3_data	})
-			rd_sdram_fifo_req[3] <= 1'b1;
-		else
-			rd_sdram_fifo_req[3] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad4_data	})
-			rd_sdram_fifo_req[4] <= 1'b1;
-		else
-			rd_sdram_fifo_req[4] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad5_data	})
-			rd_sdram_fifo_req[5] <= 1'b1;
-		else
-			rd_sdram_fifo_req[5] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad6_data	})
-			rd_sdram_fifo_req[6] <= 1'b1;
-		else
-			rd_sdram_fifo_req[6] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad7_data	})
-			rd_sdram_fifo_req[7] <= 1'b1;
-		else
-			rd_sdram_fifo_req[7] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad8_data	})
-			rd_sdram_fifo_req[8] <= 1'b1;
-		else
-			rd_sdram_fifo_req[8] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad9_data	})
-			rd_sdram_fifo_req[9] <= 1'b1;
-		else
-			rd_sdram_fifo_req[9] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad10_data	})
-			rd_sdram_fifo_req[10] <= 1'b1;
-		else
-			rd_sdram_fifo_req[10] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad11_data	})
-			rd_sdram_fifo_req[11] <= 1'b1;
-		else
-			rd_sdram_fifo_req[11] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad12_data	})
-			rd_sdram_fifo_req[12] <= 1'b1;
-		else
-			rd_sdram_fifo_req[12] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad13_data	})
-			rd_sdram_fifo_req[13] <= 1'b1;
-		else
-			rd_sdram_fifo_req[13] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad14_data	})
-			rd_sdram_fifo_req[14] <= 1'b1;
-		else
-			rd_sdram_fifo_req[14] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad15_data	})
-			rd_sdram_fifo_req[15] <= 1'b1;
-		else
-			rd_sdram_fifo_req[15] <= 1'b0;
-			
-						
-		if({muc_cs_n,muc_rd_n,muc_addr} =={2'b0,ADDR_reg_ad16_data	})
-			rd_sdram_fifo_req[16] <= 1'b1;
-		else
-			rd_sdram_fifo_req[16] <= 1'b0;
-		end
-
-	always@(posedge FSMC_CLK_100M)
-		rdsdram_fifo_req <= rd_sdram_fifo_req;
-	reg	[16:1]		rd_sdram_fifo_req_flag;
-	generate	
-		genvar	n;	
-			for(n=1;n<17;n=n+1) begin	:	rd_sdram_fifo_req_flag_G	
-			always@(posedge FSMC_CLK_100M)
-		//	assign rd_sdram_fifo_req_flag[n] 		= 	rd_sdram_fifo_req[n] & !rdsdram_fifo_req[n];
-			 rd_sdram_fifo_req_flag[n] 		<= 	rd_sdram_fifo_req[n] & !rdsdram_fifo_req[n];
-
-	end  
-endgenerate	
-
-// arm 读使能及数据路由
- 	always@(posedge FSMC_CLK_100M) begin
-	case(reg_ad_status)
-		16'h0001: begin rdf_rdreq <= rd_sdram_fifo_req_flag[1 ];reg_ad1_data <= rdf_dout;  end
-		16'h0002: begin rdf_rdreq <= rd_sdram_fifo_req_flag[2 ];reg_ad2_data <= rdf_dout;  end
-		16'h0004: begin rdf_rdreq <= rd_sdram_fifo_req_flag[3 ];reg_ad3_data <= rdf_dout;  end
-		16'h0008: begin rdf_rdreq <= rd_sdram_fifo_req_flag[4 ];reg_ad4_data <= rdf_dout;  end
-		16'h0010: begin rdf_rdreq <= rd_sdram_fifo_req_flag[5 ];reg_ad5_data <= rdf_dout;  end
-		16'h0020: begin rdf_rdreq <= rd_sdram_fifo_req_flag[6 ];reg_ad6_data <= rdf_dout;  end
-		16'h0040: begin rdf_rdreq <= rd_sdram_fifo_req_flag[7 ];reg_ad7_data <= rdf_dout;  end
-		16'h0080: begin rdf_rdreq <= rd_sdram_fifo_req_flag[8 ];reg_ad8_data <= rdf_dout;  end
-		default:  ;
-	endcase
-end	 
+		
 
 
  // ceshi 
@@ -505,23 +437,31 @@ AD_CTL U4_AD_CTL
 	.Phase_valid    (Phase_valid			),
     .reg_freq1		(reg_freq1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
     .reg_freq2		(reg_freq2				),//(reg_freq2	16'd10000			), 
-    .reg_freq3		(reg_freq3				),//(reg_freq3	16'd10000			), 
-    .reg_freq4		(reg_freq4				),//(reg_freq4				), 
     .Phase_cnt_out	(Phase_cnt_out			), 
     .ad_start		(ad_start				)//(ad_start)
     );
+	wire   [35:00] CONTROL0;
+    wire	[211:0]  ila_data;
+icon_ny icon_ny_i (
+    .CONTROL0(CONTROL0)
+);
+ila_my ila_my_inst (
+    .CONTROL(CONTROL0), // INOUT BUS [35:0]
+    .CLK(FSMC_CLK_100M), // IN
+    .TRIG0(ila_data) // IN BUS [7:0]
+);	
 
-	
-	//上行 4096 fifo
-	wire	wrfull_sig1,wrfull_sig2,wrfull_sig3;	
-	reg		[16:1]	fifo_wr_reg1;
-	reg		[16:1]	fifo_wr_reg2;
-	reg		[11:0]	wrfull_cnt1;
-	reg		[11:0]	wrfull_cnt2;
-	reg		[11:0]	wrfull_cnt3;
-	wire	[11:0]	wrusedw1;
-	wire	[11:0]	wrusedw2;
-	
-	
-	
+ assign ila_data[0] =  muc_cs_n;
+ assign ila_data[1] =  muc_we_n;
+ assign ila_data[2] =  muc_rd_n;
+ assign ila_data[11:3] =  muc_addr[8:0];
+ assign ila_data[27:12] =  muc_data[15:0];
+ assign ila_data[35:28] =  fifo_rd_req[7:0];
+ assign ila_data[43:36] =  full[7:0];
+ assign ila_data[75:44] =  Phase_cnt_out[31:0];
+ assign ila_data[79:76] =  ad_start[3:0];
+ assign ila_data[80] =  fifo_rst;
+ assign ila_data[211:81] =  'b0;
+
+
 endmodule

@@ -1,0 +1,17 @@
+# Output products list for <icon_ny>
+_xmsgs\pn_parser.xmsgs
+icon_ny.asy
+icon_ny.constraints\icon_ny.ucf
+icon_ny.constraints\icon_ny.xdc
+icon_ny.gise
+icon_ny.ngc
+icon_ny.sym
+icon_ny.ucf
+icon_ny.v
+icon_ny.veo
+icon_ny.xco
+icon_ny.xdc
+icon_ny.xise
+icon_ny_flist.txt
+icon_ny_readme.txt
+icon_ny_xmdf.tcl
