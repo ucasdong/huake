@@ -487,7 +487,10 @@ ila_my ila_my_inst (
  assign ila_data[75:44] =  Phase_cnt_out[31:0];
  assign ila_data[79:76] =  ad_start[3:0];
  assign ila_data[80] =  fifo_rst;
- assign ila_data[211:81] =  'b0;
+ assign ila_data[81] =  work_en;
+ assign ila_data[82] =  Phase_valid;
+ assign ila_data[98:83] =  reg_freq1[15:0];
+ assign ila_data[211:99] =  'b0;
 
 
 endmodule
