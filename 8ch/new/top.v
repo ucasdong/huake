@@ -90,9 +90,10 @@ module top#(
 		
 		reg 		[16:1]	rdsdram_fifo_req			;//ARM 读FIFO使能
 		wire		[15:0]	rdf_dout					;//sdram_fifo输出数据
-		reg 		[00:0]	fifo_rst ='b0   			;//wrfifo_16w_16r_128d复位信号
+		reg 		[00:0]	fifo_rst ='b1   			;//wrfifo_16w_16r_128d复位信号
 		reg					rdf_rdreq					;//sdram_fifo读使能
 		reg                 ad_enble_r = 'b0			;
+		reg                 work_en             = 'b0;
 		//fifo full state
 		wire        [07:00] full                        ;
 		wire                locked                      ;
@@ -119,7 +120,16 @@ always@(posedge AD_CLK_40M)
    end
    else 
    work_led_cnt   <= work_led_cnt + 32'b1;
+
      
+//-------------------------------------------------------
+  always@(posedge AD_CLK_40M)
+    if(data_full)
+      work_en <= 'b0;
+    else if(~ad_enble_r && reg_ad_enble)//pos adenble
+      work_en <= 'b1;
+    else
+      work_en <= work_en;
 //-------------------------------------------------------
 		
 		
@@ -162,7 +172,7 @@ always@(posedge AD_CLK_40M)
 
 
 		
-		
+	        assign                  data_full = &full;	
 		assign			detect_error = (Phase_cnt_out == 32'b0)?1'b1:1'b0; //鉴相器错误指示
 		// 复位部分
 
@@ -433,7 +443,7 @@ AD_CTL U4_AD_CTL
 	(
     .clk			(AD_CLK_40M				), 
     .rst_n			(reg_ad_enble_ceshi		), 
-	.reg_ad_enble   (reg_ad_enble     		),
+	.reg_ad_enble   (work_en     		),
 	.Phase_valid    (Phase_valid			),
     .reg_freq1		(reg_freq1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
     .reg_freq2		(reg_freq2				),//(reg_freq2	16'd10000			), 
