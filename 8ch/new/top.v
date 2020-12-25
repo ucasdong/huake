@@ -279,7 +279,7 @@ always@(posedge AD_CLK_40M)
 		wire			[15:0]	q_data_ob    	[1:0]       ;
 		wire			[15:0]	q_data_oc    	[1:0]       ;
 		wire			[15:0]	q_data_od    	[1:0]       ;	
-		reg  			[7:0]	fifo_rd_req  = 'b0			;
+		wire  			[7:0]	fifo_rd_req  	;
 
 		wire			[6:0]	wrusedw		[15:0]		;	
 		wire			[15:0]	wrfifo_gnt_in				;
@@ -357,12 +357,28 @@ AD7606 U1_AD7606 (
 
 ///ARM读使能产生信号
    reg   muc_rd_n_r;
-   always@(posedge FSMC_CLK_100M)
+   always@(posedge FSMC_CLK_100M) begin
 		 muc_rd_n_r <= muc_rd_n;
-    
+		 
+                 reg_ad1_data <= q_data_oa[0];
+                 reg_ad2_data <= q_data_ob[0];
+                 reg_ad3_data <= q_data_oc[0];
+                 reg_ad4_data <= q_data_od[0];
+                 reg_ad5_data <= q_data_oa[1];
+                 reg_ad6_data <= q_data_ob[1];
+                 reg_ad7_data <= q_data_oc[1];
+                 reg_ad8_data <= q_data_od[1];
+	 end
  
-
-	always@(posedge FSMC_CLK_100M)begin
+           assign fifo_rd_req[0] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad1_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
+           assign fifo_rd_req[1] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad2_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
+           assign fifo_rd_req[2] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad3_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
+           assign fifo_rd_req[3] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad4_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
+           assign fifo_rd_req[4] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad5_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
+           assign fifo_rd_req[5] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad6_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
+           assign fifo_rd_req[6] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad7_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
+           assign fifo_rd_req[7] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad8_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
+/*	always@(posedge FSMC_CLK_100M)begin
 		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad1_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
 		     fifo_rd_req[0] <= 'b1;
 			 reg_ad1_data <= q_data_oa[0];end
@@ -404,7 +420,7 @@ AD7606 U1_AD7606 (
 		   else
 		      fifo_rd_req[7] <= 'b0;			  
 		 end
-	
+*/	
 		
 
 
