@@ -499,7 +499,7 @@ ila_my ila_my_inst (
  assign ila_data[138:137] =  adc_rd_n_o[1:0];
  assign ila_data[140:139] =  adc_reset_o[1:0];
  assign ila_data[142:141] =  fastdata[1:0];
- assign ila_data[211:43] =  'b0;
+ assign ila_data[211:143] =  'b0;
 
 
 endmodule
