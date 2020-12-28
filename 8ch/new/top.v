@@ -19,6 +19,7 @@ module top#(
 													
 													
 		input       [1:0]       adc_busy_i												,     	// ADC BUSY signal
+		input       [1:0]       fastdata												,     	// ADC BUSY signal
 		output      [1:0]       adc_range_o												,    	// ADC RANGE signal
 		output  	[1:0]       adc_rd_n_o												,     	// ADC RD signal
 		output  	[1:0]       adc_reset_o												,    	// ADC RESET signal
@@ -490,7 +491,15 @@ ila_my ila_my_inst (
  assign ila_data[81] =  work_en;
  assign ila_data[82] =  Phase_valid;
  assign ila_data[98:83] =  reg_freq1[15:0];
- assign ila_data[211:99] =  'b0;
+ assign ila_data[114:99] =  adc_db_i0[15:0];
+ assign ila_data[130:115] =  adc_busy_i[1:0];
+ assign ila_data[132:131] =  adc_cs_n_o[1:0];
+ assign ila_data[134:133] =  adc_convst_a_o[1:0];
+ assign ila_data[136:135] =  adc_convst_b_o[1:0];
+ assign ila_data[138:137] =  adc_rd_n_o[1:0];
+ assign ila_data[140:139] =  adc_reset_o[1:0];
+ assign ila_data[142:141] =  fastdata[1:0];
+ assign ila_data[211:43] =  'b0;
 
 
 endmodule
