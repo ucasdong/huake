@@ -100,16 +100,18 @@ module AD7606
     output  reg         	adc_reset_o		,    		// ADC RESET signal
  //   output              	adc_stdby_o		,    		// 硬锟斤拷为锟斤拷锟
     output  	        	adc_convst_a_o	,    		// ADC CONVST signal
-    output  	        	adc_convst_b_o   			// ADC CONVST signal
+    output  	        	adc_convst_b_o  ,			// ADC CONVST signal
+	output          [3:0]   dbg_adc_next_state
 	
 );
+assign dbg_adc_next_state = adc_next_state;
 reg     [9:00]  delay_cov;
 wire 	fpga_clk_i							;
 assign 	fpga_clk_i = clk_40M				;
 	
 assign	adc_convst_a_o = adc_convst_o		;
 
-assign	adc_convst_b_o = delay_cov[9]		;
+assign	adc_convst_b_o = adc_convst_o		;
 always@(posedge fpga_clk_i)
     delay_cov  <= {delay_cov[8:0],adc_convst_o};
 
