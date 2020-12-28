@@ -152,12 +152,13 @@ reg			data_rd_ready_oreg2				;
 //------------------------------------------------------------------------------
 
 //ADC states
-parameter 	ADC_IDLE_STATE            = 4'd0, // Default state
+parameter        	ADC_IDLE_STATE            = 4'd0, // Default state
 			ADC_START_CONV_STATE      = 4'd1, // Togle conversion signal
 			ADC_START_CONV_STATE_W    = 4'd2, // Togle conversion signal
 			ADC_WAIT_BUSY_HIGH_STATE  = 4'd3, // Wait for the Busy signal to go High
 			ADC_WAIT_BUSY_LOW_STATE   = 4'd4, // Wait for the Busy signal to go Low
 			ADC_CS_RD_LOW_STATE       = 4'd5, // Bring CS and RD signals Low
+			ADC_CS_RD_LOW_WAIT        = 4'd9, // Bring CS and RD signals Low
 			ADC_READDATA_STATE        = 4'd6, // Reads data from the ADC
 			ADC_TRANSFER_DATA_STATE   = 4'd7, // Sends data to the upper module
 			ADC_WAIT_END_STATE        = 4'd8; // Waits for the cycle time to end
@@ -303,11 +304,13 @@ begin
         end
         ADC_CS_RD_LOW_STATE:
         begin
-            if( delay_cs == 1'h1 ) // extend the delay between CS and data read with one clock cycle
-            begin
-                adc_next_state = ADC_READDATA_STATE;
-            end
+         //   if( delay_cs == 1'h1 ) // extend the delay between CS and data read with one clock cycle
+           // begin
+                adc_next_state = ADC_CS_RD_LOW_WAIT;
+            //end
         end
+	ADC_CS_RD_LOW_WAIT:
+		adc_next_state = ADC_READDATA_STATE;
         ADC_READDATA_STATE:
         begin
             adc_next_state = ADC_TRANSFER_DATA_STATE;
