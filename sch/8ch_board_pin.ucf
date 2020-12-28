@@ -44,7 +44,7 @@ NET "adc_reset_o[0]"      LOC= H2 |IOSTANDARD=LVCMOS33;
 NET "adc_os_o0[0]"       LOC= J3 |IOSTANDARD=LVCMOS33;	
 NET "adc_os_o0[1]"       LOC= J4 |IOSTANDARD=LVCMOS33;
 NET "adc_os_o0[2]"       LOC= K4 |IOSTANDARD=LVCMOS33;
-NET "fastdata[1]"       LOC= G1 |IOSTANDARD=LVCMOS33;
+NET "fastdata[0]"       LOC= G1 |IOSTANDARD=LVCMOS33;
 
 # AD7606_B
 NET "adc_db_i1[0]"   LOC= P2 |IOSTANDARD=LVCMOS33;
