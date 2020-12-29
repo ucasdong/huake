@@ -12,7 +12,8 @@ module AD_CTL(
 	
 	input		[31:0]	Phase_cnt_out	,
 	
-	output	reg [4:1]	ad_start
+	output	reg [4:1]	ad_start,
+	output  [31:00]     freq1_cnt
 );
 
 reg                  tans_latch = 'b0;

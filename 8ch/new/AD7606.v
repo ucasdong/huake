@@ -109,9 +109,9 @@ reg     [9:00]  delay_cov;
 wire 	fpga_clk_i							;
 assign 	fpga_clk_i = clk_40M				;
 	
-assign	adc_convst_a_o = adc_convst_o		;
+assign	adc_convst_a_o = adc_convst_o && delay_cov[0] 		;
 
-assign	adc_convst_b_o = adc_convst_o		;
+assign	adc_convst_b_o = adc_convst_o && delay_cov[0]		;
 always@(posedge fpga_clk_i)
     delay_cov  <= {delay_cov[8:0],adc_convst_o};
 

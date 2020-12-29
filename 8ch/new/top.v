@@ -1,3 +1,4 @@
+//`define test
 module top#(
 			ADDR_reg_BASE   = 10'h000
 		)(
@@ -68,8 +69,8 @@ module top#(
 		assign mcu_data_in 	= muc_data													;
 		//FPGA的mcu总线接口寄存器定义
 		wire		[15:0]	reg_version	 = 16'h1000		;//版本寄存器  
-		reg 		[15:0]	reg_freq1 = 16'h1           ;//频率位置寄存器
-		reg         [15:0]  reg_freq2 = 16'h1           ;//频率位置寄存器
+		reg 		[15:0]	reg_freq1 = 16'd10240           ;//频率位置寄存器
+		reg         [15:0]  reg_freq2 = 16'h10240           ;//频率位置寄存器
 		reg         [15:0]  reg_freq3 = 16'h1           ;//频率位置寄存器
 		reg         [15:0]  reg_freq4 = 16'h1			;//频率位置寄存器
 		reg			[15:0]	reg_freq_phase_l			;//鉴相频率寄存器
@@ -146,8 +147,7 @@ always@(posedge AD_CLK_40M)
 //clear fifo 
 always@(posedge AD_CLK_40M)	
      ad_enble_r <= #1 reg_ad_enble;
-always@(posedge AD_CLK_40M)
-     fifo_rst <= ~ad_enble_r && reg_ad_enble;
+
    
 		
 		//例化接口表
@@ -293,13 +293,14 @@ always@(posedge AD_CLK_40M)
 		wire			[15:0]	q_data_ob    	[1:0]       ;
 		wire			[15:0]	q_data_oc    	[1:0]       ;
 		wire			[15:0]	q_data_od    	[1:0]       ;	
-		reg  			[7:0]	fifo_rd_req  	;
+		reg  			[7:0]	fifo_rd_req  	 = 'b0;
 
 		wire			[6:0]	wrusedw		[15:0]		;	
 		wire			[15:0]	wrfifo_gnt_in				;
 		wire			[15:0]	wrfull_flag					;
 		wire					rd_ack_falg					;
 		wire					rdempty_flag					;
+		wire            [31:00] freq1_cnt;
 		
  		generate	
 		genvar	i;	
@@ -328,41 +329,57 @@ AD7606 U1_AD7606 (
         .dbg_adc_next_state  (dbg_adc_next_state[i])		
 		);
 		wrfifo_16w_16r_2048d data_oa_wrfifo_16w_16r_2048d (
+`ifdef test		
+		.rst		   	( fifo_rst				), // input rst
+`else		
 		.rst		   	( clr_fifo				), // input rst
+`endif		
 		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
 		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
 		.din		   	( data_oa[i]			), // input [15 : 0] din
-		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 0]), // input wr_en
+		.wr_en		   	( data_rd_ready_o[i]    ), // input wr_en
 		.rd_en		   	( fifo_rd_req[i*4 + 0]	), // input rd_en
 		.dout		   	( q_data_oa[i]			), // output [15 : 0] dout
 		.full		   	( full[i*4 + 0]	     	) 
 		);	
 		wrfifo_16w_16r_2048d data_ob_wrfifo_16w_16r_2048d (
+`ifdef test		
+		.rst		   	( fifo_rst				), // input rst
+`else		
 		.rst		   	( clr_fifo				), // input rst
+`endif		
 		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
 		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
 		.din		   	( data_ob[i]			), // input [15 : 0] din
-		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 1]), // input wr_en
+		.wr_en		   	( data_rd_ready_o[i]    ), // input wr_en
 		.rd_en		   	( fifo_rd_req[i*4 + 1]	), // input rd_en
 		.dout		   	( q_data_ob[i]			), // output [15 : 0] dout
 		.full		   	( full[i*4 + 1]	     	) 
 		);		
 		wrfifo_16w_16r_2048d data_oc_wrfifo_16w_16r_2048d (
+`ifdef test		
+		.rst		   	( fifo_rst				), // input rst
+`else		
 		.rst		   	( clr_fifo				), // input rst
-		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
+`endif				
+        .wr_clk		   	( AD_CLK_40M			), // input wr_clk
 		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
 		.din		   	( data_oc[i]			), // input [15 : 0] din
-		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 2]), // input wr_en
+		.wr_en		   	( data_rd_ready_o[i]    ), // input wr_en
 		.rd_en		   	( fifo_rd_req[i*4 + 2]	), // input rd_en
 		.dout		   	( q_data_oc[i]			), // output [15 : 0] dout
 		.full		   	( full[i*4 + 2]	     	) 
 		);		
 		wrfifo_16w_16r_2048d data_od_wrfifo_16w_16r_2048d (
+`ifdef test		
+		.rst		   	( fifo_rst				), // input rst
+`else		
 		.rst		   	( clr_fifo				), // input rst
+`endif		
 		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
 		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
 		.din		   	( data_od[i]			), // input [15 : 0] din
-		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 3]), // input wr_en
+		.wr_en		   	( data_rd_ready_o[i]   ), // input wr_en
 		.rd_en		   	( fifo_rd_req[i*4 + 3]	), // input rd_en
 		.dout		   	( q_data_od[i]			), // output [15 : 0] dout
 		.full		   	( full[i*4 + 3]	     	) 
@@ -393,6 +410,39 @@ AD7606 U1_AD7606 (
            assign fifo_rd_req[5] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad6_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
            assign fifo_rd_req[6] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad7_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
            assign fifo_rd_req[7] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad8_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1); */
+`ifdef test
+    //      reg fifo_rst ='b0;
+		  reg   [5:0]  delay_cnt= 'b0;
+		  reg [31:00] test_cnt = 'b0;
+		  reg        test_work_en = 'b0;
+		  reg [5:0]  test_state_cnt = 'b0;
+	always@(posedge FSMC_CLK_100M) 
+	      if(ASYNC_OUT) begin
+		        fifo_rd_req[0] <= 'b0;
+		        fifo_rst <= 'b1;
+				test_state_cnt <= 'b0;end
+		 else begin
+	     case(test_state_cnt)
+		 'd0:begin delay_cnt <= 'd0; fifo_rst <= 'b0; test_cnt <= 'b0; test_work_en <= 'b1;if(&full) test_state_cnt <= 'd1; end
+		 'd1:begin  test_work_en <= 'b0; fifo_rd_req[0] <= 'b1;reg_ad1_data <= q_data_oa[0];
+		              if(test_cnt == 'd2048) begin
+					   test_state_cnt <= 'd2;end
+					  else
+					   test_cnt       <= test_cnt + 'b1;
+			end
+		 'd2: begin fifo_rd_req[0] <= 'b0;
+		            fifo_rst <= 'd1; 
+		           if(delay_cnt >= 'd40) 
+		             test_state_cnt <= 'd0;
+				   else
+				     delay_cnt <= delay_cnt + 'b1;
+					 
+					 end	
+					  
+		 endcase
+		 end
+		   
+`else 		   
 	always@(posedge FSMC_CLK_100M)begin
 		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad1_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
 		     fifo_rd_req[0] <= 'b1;
@@ -436,7 +486,7 @@ AD7606 U1_AD7606 (
 		      fifo_rd_req[7] <= 'b0;			  
 		 end
 	
-		
+`endif		
 
 
  // ceshi 
@@ -474,17 +524,30 @@ AD_CTL U4_AD_CTL
 	(
     .clk			(AD_CLK_40M				), 
     .rst_n			(reg_ad_enble_ceshi		), 
+`ifdef test	
+	.reg_ad_enble   (test_work_en    		),
+`else	
 	.reg_ad_enble   (work_en     		),
-	.Phase_valid    (Phase_valid			),
+`endif	
+	
+	.Phase_valid    (Phase_valid			),	
     .reg_freq1		(reg_freq1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
     .reg_freq2		(reg_freq2				),//(reg_freq2	16'd10000			), 
     .Phase_cnt_out	(Phase_cnt_out			), 
+    .freq1_cnt	    (freq1_cnt			    ), 
     .ad_start		(ad_start				)//(ad_start)
     );
 	wire   [35:00] CONTROL0;
+	wire   [35:00] CONTROL1;
     wire	[211:0]  ila_data;
+	wire     ASYNC_OUT;
 icon_ny icon_ny_i (
-    .CONTROL0(CONTROL0)
+    .CONTROL0(CONTROL0),
+    .CONTROL1(CONTROL1)
+);
+vio_my YourInstanceName (
+    .CONTROL(CONTROL1), // INOUT BUS [35:0]
+    .ASYNC_OUT(ASYNC_OUT) // OUT BUS [0:0]
 );
 ila_my ila_my_inst (
     .CONTROL(CONTROL0), // INOUT BUS [35:0]
@@ -514,10 +577,9 @@ ila_my ila_my_inst (
  assign ila_data[140:139] =  adc_reset_o[1:0];
  assign ila_data[142:141] =  fastdata[1:0];
  assign ila_data[143] =  reg_ad_enble;
- assign ila_data[159:144] =  data_oa[0][15:00];
- assign ila_data[175:160] =  reg_ad1_data[15:00];
- assign ila_data[179:176] =  next_state0[3:00];
- assign ila_data[211:180] =  'b0;
+ assign ila_data[159:144] =  reg_ad1_data[15:00];
+ assign ila_data[191:160] =  freq1_cnt[31:00];
+ assign ila_data[211:192] =  'b0;
 
 
 endmodule
