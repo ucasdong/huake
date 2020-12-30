@@ -141,12 +141,12 @@ reg         delay_cs						;               // used for increasing the time betwee
 
 
 //锟斤拷锟捷寄达拷锟斤拷
-(*keep*)reg  [15:0] data_oareg						;
-(*keep*)reg  [15:0] data_obreg						;
-(*keep*)reg  [15:0] data_ocreg						;
-(*keep*)reg  [15:0] data_odreg						;
+reg  [15:0] data_oareg						;
+reg  [15:0] data_obreg						;
+reg  [15:0] data_ocreg						;
+reg  [15:0] data_odreg						;
 //					
-(*keep*)reg	[15:0]  data_o							;
+reg	[15:0]  data_o							;
 reg			data_rd_ready_oreg1				;
 reg			data_rd_ready_oreg2				;
 //------------------------------------------------------------------------------
@@ -154,16 +154,16 @@ reg			data_rd_ready_oreg2				;
 //------------------------------------------------------------------------------
 
 //ADC states
-parameter        	ADC_IDLE_STATE            = 4'd0, // Default state
+parameter   ADC_IDLE_STATE            = 4'd0, // Default state
 			ADC_START_CONV_STATE      = 4'd1, // Togle conversion signal
 			ADC_START_CONV_STATE_W    = 4'd2, // Togle conversion signal
 			ADC_WAIT_BUSY_HIGH_STATE  = 4'd3, // Wait for the Busy signal to go High
 			ADC_WAIT_BUSY_LOW_STATE   = 4'd4, // Wait for the Busy signal to go Low
 			ADC_CS_RD_LOW_STATE       = 4'd5, // Bring CS and RD signals Low
-			ADC_CS_RD_LOW_WAIT        = 4'd9, // Bring CS and RD signals Low
-			ADC_READDATA_STATE        = 4'd6, // Reads data from the ADC
-			ADC_TRANSFER_DATA_STATE   = 4'd7, // Sends data to the upper module
-			ADC_WAIT_END_STATE        = 4'd8; // Waits for the cycle time to end
+			ADC_CS_RD_LOW_WAIT        = 4'd6, // Bring CS and RD signals Low
+			ADC_READDATA_STATE        = 4'd7, // Reads data from the ADC
+			ADC_TRANSFER_DATA_STATE   = 4'd8, // Sends data to the upper module
+			ADC_WAIT_END_STATE        = 4'd9; // Waits for the cycle time to end
 
 //ADC timing
 parameter real FPGA_CLOCK_FREQ      = 48;   // FPGA clock frequency [MHz]

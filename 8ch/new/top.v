@@ -301,6 +301,7 @@ always@(posedge AD_CLK_40M)
 		wire					rd_ack_falg					;
 		wire					rdempty_flag					;
 		wire            [31:00] freq1_cnt;
+		wire            [31:00] freq2_cnt;
 		
  		generate	
 		genvar	i;	
@@ -476,7 +477,7 @@ AD7606 U1_AD7606 (
 		      fifo_rd_req[5] <= 'b0;
 		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad7_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
 		     fifo_rd_req[6] <= 'b1;
-			 reg_ad6_data <= q_data_oc[1];end
+			 reg_ad7_data <= q_data_oc[1];end
 		   else
 		      fifo_rd_req[6] <= 'b0;	
 		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad8_data	}&& (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
@@ -520,6 +521,20 @@ Phase_detector U3_Phase_detector (
 	 .Phase_valid   (Phase_valid			),
     .Phase_cnt_out	(Phase_cnt_out			)//31:0
     );	
+	
+/* 	reg [1:0] valid_ph;
+	reg  [31:00] valid_ph_data0,valid_ph_data1;
+	always@(FSMC_CLK_100M) begin
+	    valid_ph <= {valid_ph[0],Phase_valid};
+		valid_ph_data0 <= Phase_cnt_out
+	end */
+	reg   [15:00] freq_r1;
+	reg   [15:00] freq_r2;
+	always@(posedge AD_CLK_40M) begin
+	  freq_r1 <= reg_freq1;
+	  freq_r2 <= freq2_cnt;
+	end
+	
 AD_CTL U4_AD_CTL 
 	(
     .clk			(AD_CLK_40M				), 
@@ -531,10 +546,11 @@ AD_CTL U4_AD_CTL
 `endif	
 	
 	.Phase_valid    (Phase_valid			),	
-    .reg_freq1		(reg_freq1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
-    .reg_freq2		(reg_freq2				),//(reg_freq2	16'd10000			), 
+    .reg_freq1		(freq_r1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
+    .reg_freq2		(freq_r2				),//(reg_freq2	16'd10000			), 
     .Phase_cnt_out	(Phase_cnt_out			), 
     .freq1_cnt	    (freq1_cnt			    ), 
+    .freq2_cnt	    (freq2_cnt			    ), 
     .ad_start		(ad_start				)//(ad_start)
     );
 	wire   [35:00] CONTROL0;
@@ -578,7 +594,8 @@ ila_my ila_my_inst (
  assign ila_data[142:141] =  fastdata[1:0];
  assign ila_data[143] =  reg_ad_enble;
  assign ila_data[159:144] =  reg_ad1_data[15:00];
- assign ila_data[191:160] =  freq1_cnt[31:00];
+ assign ila_data[175:160] =  freq1_cnt[15:00];
+ assign ila_data[191:176] =  freq2_cnt[15:00];
  assign ila_data[211:192] =  'b0;
 
 

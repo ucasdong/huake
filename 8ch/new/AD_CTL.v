@@ -13,7 +13,8 @@ module AD_CTL(
 	input		[31:0]	Phase_cnt_out	,
 	
 	output	reg [4:1]	ad_start,
-	output  [31:00]     freq1_cnt
+	output  [31:00]     freq1_cnt,
+	output  [31:00]     freq2_cnt
 );
 
 reg                  tans_latch = 'b0;
@@ -69,15 +70,18 @@ always@(posedge clk,negedge rst_n)
 		
 		
 always@(posedge clk) begin
-		if(freq1_cnt == 32'd3 || freq1_cnt == 32'd4)
+		if(freq1_cnt == 32'd3 || freq1_cnt == 32'd4)begin
+		  
 			ad_start[1]	<= 1'b1;
-		else
+			ad_start[2]	<= 1'b1; end
+		else begin
 			ad_start[1]	<= 1'b0;
+			ad_start[2]	<= 1'b0;end
 			
-		if(freq2_cnt == 32'd3 || freq2_cnt == 32'd4)
+/* 		if(freq2_cnt == 32'd3 || freq2_cnt == 32'd4)
 			ad_start[2]	<= 1'b1;
 		else
-			ad_start[2]	<= 1'b0;
+			ad_start[2]	<= 1'b0; */
 		
 		if(freq3_cnt == 32'd3 || freq3_cnt == 32'd4)
 			ad_start[3]	<= 1'b1;
