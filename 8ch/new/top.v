@@ -65,7 +65,7 @@ module top#(
 		wire				detect_error;//鉴相故障指示
 		reg    		[15:0]  mcu_data_out = 16'b0;
 		//三态操作接口
-		assign muc_data 	= ((muc_cs_n || muc_rd_n) == 1'b0)?mcu_data_out:16'hzzzz	;
+		assign muc_data 	= !muc_rd_n ?mcu_data_out:16'hzzzz	;
 		assign mcu_data_in 	= muc_data													;
 		//FPGA的mcu总线接口寄存器定义
 		wire		[15:0]	reg_version	 = 16'h1000		;//版本寄存器  
@@ -231,29 +231,32 @@ always@(posedge AD_CLK_40M)
 		////////////////////////////////////////////////////////////////////////////////////////		
 		//总线读部分
 		always @(*) 
-			begin
-				case({muc_cs_n,muc_rd_n,muc_addr})
-				{2'b0,ADDR_reg_version	}:     mcu_data_out <= reg_version			      		;
-				{2'b0,ADDR_reg_freq1    }:     mcu_data_out <= reg_freq1                  		;
-				{2'b0,ADDR_reg_freq2    }:     mcu_data_out <= reg_freq2                  		;
-				{2'b0,ADDR_reg_freq3    }:     mcu_data_out <= reg_freq3                  		;
-				{2'b0,ADDR_reg_freq4	}:     mcu_data_out <= reg_freq4			      		;
-				{2'b0,ADDR_reg_freq_phase_l}:  mcu_data_out <= Phase_cnt_out[15:0]      		;
-				{2'b0,ADDR_reg_freq_phase_h}:  mcu_data_out <= Phase_cnt_out[31:16]      		;
-				{2'b0,ADDR_reg_ad_enble	}:     mcu_data_out <= {15'b0,reg_ad_enble}  			;//use pos  clear fifo
-				{2'b0,ADDR_reg_ad_reset	}:     mcu_data_out <= {15'b0,reg_ad_reset}	    		;
-				{2'b0,ADDR_reg_ad_fifo_clr}:   mcu_data_out <= {15'b0,clr_fifo}    		;
-				{2'b0,ADDR_reg_ad_status}:     mcu_data_out <= reg_ad_status	     			;
-												                                         
-				{2'b0,ADDR_reg_ad1_data	}:     mcu_data_out <= reg_ad1_data	      				;
-				{2'b0,ADDR_reg_ad2_data	}:     mcu_data_out <= reg_ad2_data	      				;
-				{2'b0,ADDR_reg_ad3_data	}:     mcu_data_out <= reg_ad3_data	      				;
-				{2'b0,ADDR_reg_ad4_data	}:     mcu_data_out <= reg_ad4_data	      				;
-				{2'b0,ADDR_reg_ad5_data	}:     mcu_data_out <= reg_ad5_data	      				;
-				{2'b0,ADDR_reg_ad6_data	}:     mcu_data_out <= reg_ad6_data	      				;
-				{2'b0,ADDR_reg_ad7_data	}:     mcu_data_out <= reg_ad7_data	      				;
-				{2'b0,ADDR_reg_ad8_data	}:     mcu_data_out <= reg_ad8_data	      				;
-				{2'b0,ADDR_reg_datafull	}:     mcu_data_out <= {14'b0,detect_error,data_full}	;
+		  if(!rst_n) 
+		  mcu_data_out <= 'b0;
+		  else
+			begin if(!muc_rd_n)
+				case(muc_addr)
+				{ADDR_reg_version	}:     mcu_data_out <= reg_version			      		;
+				{ADDR_reg_freq1     }:     mcu_data_out <= reg_freq1                  		;
+				{ADDR_reg_freq2     }:     mcu_data_out <= reg_freq2                  		;
+				{ADDR_reg_freq3     }:     mcu_data_out <= reg_freq3                  		;
+				{ADDR_reg_freq4	    }:     mcu_data_out <= reg_freq4			      		;
+				{ADDR_reg_freq_phase_l}:  mcu_data_out <= Phase_cnt_out[15:0]      		;
+				{ADDR_reg_freq_phase_h}:  mcu_data_out <= Phase_cnt_out[31:16]      		;
+				{ADDR_reg_ad_enble	}:     mcu_data_out <= {15'b0,reg_ad_enble}  			;//use pos  clear fifo
+				{ADDR_reg_ad_reset	}:     mcu_data_out <= {15'b0,reg_ad_reset}	    		;
+				{ADDR_reg_ad_fifo_clr}:   mcu_data_out <= {15'b0,clr_fifo}    		;
+				{ADDR_reg_ad_status }:     mcu_data_out <= reg_ad_status	     			;
+										                                         
+				{ADDR_reg_ad1_data	}:     mcu_data_out <= q_data_oa[0]	      				;
+				{ADDR_reg_ad2_data	}:     mcu_data_out <= q_data_ob[0]	      				;
+				{ADDR_reg_ad3_data	}:     mcu_data_out <= q_data_oc[0]	      				;
+				{ADDR_reg_ad4_data	}:     mcu_data_out <= q_data_od[0]	      				;
+				{ADDR_reg_ad5_data	}:     mcu_data_out <= q_data_oa[1]	      				;
+				{ADDR_reg_ad6_data	}:     mcu_data_out <= q_data_ob[1]	      				;
+				{ADDR_reg_ad7_data	}:     mcu_data_out <= q_data_oc[1]	      				;
+				{ADDR_reg_ad8_data	}:     mcu_data_out <= q_data_od[1]	      				;
+				{ADDR_reg_datafull	}:     mcu_data_out <= {14'b0,detect_error,data_full}	;
 				
 				default:    				   mcu_data_out <= 16'b0;
 				endcase
@@ -293,7 +296,7 @@ always@(posedge AD_CLK_40M)
 		wire			[15:0]	q_data_ob    	[1:0]       ;
 		wire			[15:0]	q_data_oc    	[1:0]       ;
 		wire			[15:0]	q_data_od    	[1:0]       ;	
-		reg  			[7:0]	fifo_rd_req  	 = 'b0;
+		reg  			[7:0]	fifo_rd_req = 'b0  	 ;
 
 		wire			[6:0]	wrusedw		[15:0]		;	
 		wire			[15:0]	wrfifo_gnt_in				;
@@ -338,7 +341,7 @@ AD7606 U1_AD7606 (
 		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
 		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
 		.din		   	( data_oa[i]			), // input [15 : 0] din
-		.wr_en		   	( data_rd_ready_o[i]    ), // input wr_en
+		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 0]    ), // input wr_en
 		.rd_en		   	( fifo_rd_req[i*4 + 0]	), // input rd_en
 		.dout		   	( q_data_oa[i]			), // output [15 : 0] dout
 		.full		   	( full[i*4 + 0]	     	) 
@@ -352,7 +355,7 @@ AD7606 U1_AD7606 (
 		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
 		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
 		.din		   	( data_ob[i]			), // input [15 : 0] din
-		.wr_en		   	( data_rd_ready_o[i]    ), // input wr_en
+		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 1]   ), // input wr_en
 		.rd_en		   	( fifo_rd_req[i*4 + 1]	), // input rd_en
 		.dout		   	( q_data_ob[i]			), // output [15 : 0] dout
 		.full		   	( full[i*4 + 1]	     	) 
@@ -366,7 +369,7 @@ AD7606 U1_AD7606 (
         .wr_clk		   	( AD_CLK_40M			), // input wr_clk
 		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
 		.din		   	( data_oc[i]			), // input [15 : 0] din
-		.wr_en		   	( data_rd_ready_o[i]    ), // input wr_en
+		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 2]    ), // input wr_en
 		.rd_en		   	( fifo_rd_req[i*4 + 2]	), // input rd_en
 		.dout		   	( q_data_oc[i]			), // output [15 : 0] dout
 		.full		   	( full[i*4 + 2]	     	) 
@@ -380,7 +383,7 @@ AD7606 U1_AD7606 (
 		.wr_clk		   	( AD_CLK_40M			), // input wr_clk
 		.rd_clk		   	( FSMC_CLK_100M			), // input rd_clk
 		.din		   	( data_od[i]			), // input [15 : 0] din
-		.wr_en		   	( data_rd_ready_o[i]   ), // input wr_en
+		.wr_en		   	( data_rd_ready_o[i] && !full[i*4 + 3]   ), // input wr_en
 		.rd_en		   	( fifo_rd_req[i*4 + 3]	), // input rd_en
 		.dout		   	( q_data_od[i]			), // output [15 : 0] dout
 		.full		   	( full[i*4 + 3]	     	) 
@@ -389,49 +392,90 @@ AD7606 U1_AD7606 (
 		endgenerate 	
 
 ///ARM读使能产生信号
-   reg   muc_rd_n_r;
+   reg  [2:0] muc_rd_n_r;
    always@(posedge FSMC_CLK_100M) begin
-		 muc_rd_n_r <= muc_rd_n;
-		 
-/*                  reg_ad1_data <= q_data_oa[0];
-                 reg_ad2_data <= q_data_ob[0];
-                 reg_ad3_data <= q_data_oc[0];
-                 reg_ad4_data <= q_data_od[0];
-                 reg_ad5_data <= q_data_oa[1];
-                 reg_ad6_data <= q_data_ob[1];
-                 reg_ad7_data <= q_data_oc[1];
-                 reg_ad8_data <= q_data_od[1]; */
+		 muc_rd_n_r <= {muc_rd_n_r[1:0],muc_rd_n};
 	 end
  
-/*            assign fifo_rd_req[0] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad1_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
-           assign fifo_rd_req[1] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad2_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
-           assign fifo_rd_req[2] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad3_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
-           assign fifo_rd_req[3] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad4_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
-           assign fifo_rd_req[4] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad5_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
-           assign fifo_rd_req[5] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad6_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
-           assign fifo_rd_req[6] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad7_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1);
-           assign fifo_rd_req[7] = {muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad8_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1); */
+/*            assign fifo_rd_req[0] = {muc_addr} =={ADDR_reg_ad1_data} && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1);
+           assign fifo_rd_req[1] = {muc_addr} =={ADDR_reg_ad2_data} && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1);
+           assign fifo_rd_req[2] = {muc_addr} =={ADDR_reg_ad3_data} && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1);
+           assign fifo_rd_req[3] = {muc_addr} =={ADDR_reg_ad4_data} && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1);
+           assign fifo_rd_req[4] = {muc_addr} =={ADDR_reg_ad5_data} && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1);
+           assign fifo_rd_req[5] = {muc_addr} =={ADDR_reg_ad6_data} && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1);
+           assign fifo_rd_req[6] = {muc_addr} =={ADDR_reg_ad7_data} && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1);
+           assign fifo_rd_req[7] = {muc_addr} =={ADDR_reg_ad8_data} && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1);  */
+		   
+		always@(posedge FSMC_CLK_100M) 
+                   if((muc_addr ==ADDR_reg_ad1_data) && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1))	
+				      fifo_rd_req[0] <= 'b1;
+				   else
+					  fifo_rd_req[0] <= 'b0;
+		always@(posedge FSMC_CLK_100M) 
+                   if((muc_addr ==ADDR_reg_ad2_data) && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1))	
+				      fifo_rd_req[1] <= 'b1;
+				   else
+					  fifo_rd_req[1] <= 'b0;			   
+		always@(posedge FSMC_CLK_100M) 
+                   if((muc_addr ==ADDR_reg_ad3_data) && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1))	
+				      fifo_rd_req[2] <= 'b1;
+				   else
+					  fifo_rd_req[2] <= 'b0;
+		always@(posedge FSMC_CLK_100M) 
+                   if((muc_addr ==ADDR_reg_ad4_data) && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1))	
+				      fifo_rd_req[3] <= 'b1;
+				   else
+					  fifo_rd_req[3] <= 'b0;			   
+		always@(posedge FSMC_CLK_100M) 
+                   if((muc_addr ==ADDR_reg_ad5_data) && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1))	
+				      fifo_rd_req[4] <= 'b1;
+				   else
+					  fifo_rd_req[4] <= 'b0;
+		always@(posedge FSMC_CLK_100M) 
+                   if((muc_addr ==ADDR_reg_ad6_data) && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1))	
+				      fifo_rd_req[5] <= 'b1;
+				   else
+					  fifo_rd_req[5] <= 'b0;			   
+		always@(posedge FSMC_CLK_100M) 
+                   if((muc_addr ==ADDR_reg_ad7_data) && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1))	
+				      fifo_rd_req[6] <= 'b1;
+				   else
+					  fifo_rd_req[6] <= 'b0;
+		always@(posedge FSMC_CLK_100M) 
+                   if((muc_addr ==ADDR_reg_ad8_data) && (muc_rd_n_r[1] == 'b0 && muc_rd_n_r[0] == 'b1))	
+				      fifo_rd_req[7] <= 'b1;
+				   else
+					  fifo_rd_req[7] <= 'b0;		
+                           				   
 `ifdef test
     //      reg fifo_rst ='b0;
 		  reg   [5:0]  delay_cnt= 'b0;
 		  reg [31:00] test_cnt = 'b0;
 		  reg        test_work_en = 'b0;
-		  reg [5:0]  test_state_cnt = 'b0;
+		  reg [8:0]  test_state_cnt = 'b0;
 	always@(posedge FSMC_CLK_100M) 
 	      if(ASYNC_OUT) begin
-		        fifo_rd_req[0] <= 'b0;
+		        fifo_rd_req <= 'b0;
 		        fifo_rst <= 'b1;
 				test_state_cnt <= 'b0;end
 		 else begin
 	     case(test_state_cnt)
 		 'd0:begin delay_cnt <= 'd0; fifo_rst <= 'b0; test_cnt <= 'b0; test_work_en <= 'b1;if(&full) test_state_cnt <= 'd1; end
-		 'd1:begin  test_work_en <= 'b0; fifo_rd_req[0] <= 'b1;reg_ad1_data <= q_data_oa[0];
+		 'd1:begin  test_work_en <= 'b0; fifo_rd_req <= 'hff;
+		            reg_ad1_data <= q_data_oa[0];
+					reg_ad2_data <= q_data_ob[0];
+					reg_ad3_data <= q_data_od[0];
+					reg_ad4_data <= q_data_od[0];
+					reg_ad5_data <= q_data_oa[1];
+					reg_ad6_data <= q_data_ob[1];
+					reg_ad7_data <= q_data_oc[1];
+					reg_ad8_data <= q_data_od[1];
 		              if(test_cnt == 'd2048) begin
 					   test_state_cnt <= 'd2;end
 					  else
 					   test_cnt       <= test_cnt + 'b1;
 			end
-		 'd2: begin fifo_rd_req[0] <= 'b0;
+		 'd2: begin fifo_rd_req <= 'b0;
 		            fifo_rst <= 'd1; 
 		           if(delay_cnt >= 'd40) 
 		             test_state_cnt <= 'd0;
@@ -444,7 +488,7 @@ AD7606 U1_AD7606 (
 		 end
 		   
 `else 		   
-	always@(posedge FSMC_CLK_100M)begin
+	/* always@(posedge FSMC_CLK_100M)begin
 		   if({muc_cs_n,muc_addr} =={1'b0,ADDR_reg_ad1_data} && (muc_rd_n == 'b0 && muc_rd_n_r == 'b1)) begin
 		     fifo_rd_req[0] <= 'b1;
 			 reg_ad1_data <= q_data_oa[0];end
@@ -486,7 +530,7 @@ AD7606 U1_AD7606 (
 		   else
 		      fifo_rd_req[7] <= 'b0;			  
 		 end
-	
+	 */
 `endif		
 
 
@@ -506,12 +550,12 @@ AD7606 U1_AD7606 (
 			reg_ad_enble_ceshi <= 1'b1;
 			end
 	always@(posedge AD_CLK_40M)	
-		if(Phase_in_cnt == 30'd40000000) begin
+		if(Phase_in_cnt == 30'd20000000) begin
 			Phase_in_cnt <= 1'b0;
-			Phase_in_ceshi <= 1'b1; end
+			Phase_in_ceshi <= ~Phase_in_ceshi; end
 		else begin
 			Phase_in_cnt <= Phase_in_cnt +1'b1;
-			Phase_in_ceshi <= 1'b0; end
+		 end
 		 
 
 Phase_detector U3_Phase_detector (
@@ -528,12 +572,6 @@ Phase_detector U3_Phase_detector (
 	    valid_ph <= {valid_ph[0],Phase_valid};
 		valid_ph_data0 <= Phase_cnt_out
 	end */
-	reg   [15:00] freq_r1;
-	reg   [15:00] freq_r2;
-	always@(posedge AD_CLK_40M) begin
-	  freq_r1 <= reg_freq1;
-	  freq_r2 <= freq2_cnt;
-	end
 	
 AD_CTL U4_AD_CTL 
 	(
@@ -546,8 +584,8 @@ AD_CTL U4_AD_CTL
 `endif	
 	
 	.Phase_valid    (Phase_valid			),	
-    .reg_freq1		(freq_r1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
-    .reg_freq2		(freq_r2				),//(reg_freq2	16'd10000			), 
+    .reg_freq1		(reg_freq1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
+    .reg_freq2		(reg_freq2					),//(reg_freq2	16'd10000			), 
     .Phase_cnt_out	(Phase_cnt_out			), 
     .freq1_cnt	    (freq1_cnt			    ), 
     .freq2_cnt	    (freq2_cnt			    ), 
@@ -571,32 +609,35 @@ ila_my ila_my_inst (
     .TRIG0(ila_data) // IN BUS [7:0]
 );	
 
- assign ila_data[0] =  muc_cs_n;
- assign ila_data[1] =  muc_we_n;
- assign ila_data[2] =  muc_rd_n;
- assign ila_data[11:3] =  muc_addr[8:0];
- assign ila_data[27:12] =  muc_data[15:0];
- assign ila_data[35:28] =  fifo_rd_req[7:0];
- assign ila_data[43:36] =  full[7:0];
- assign ila_data[75:44] =  Phase_cnt_out[31:0];
- assign ila_data[79:76] =  ad_start[3:0];
- assign ila_data[80] =  clr_fifo;
- assign ila_data[81] =  work_en;
- assign ila_data[82] =  Phase_valid;
- assign ila_data[98:83] =  reg_freq1[15:0];
- assign ila_data[114:99] =  adc_db_i0[15:0];
- assign ila_data[130:115] =  adc_busy_i[1:0];
- assign ila_data[132:131] =  adc_cs_n_o[1:0];
- assign ila_data[134:133] =  adc_convst_a_o[1:0];
- assign ila_data[136:135] =  adc_convst_b_o[1:0];
- assign ila_data[138:137] =  adc_rd_n_o[1:0];
- assign ila_data[140:139] =  adc_reset_o[1:0];
- assign ila_data[142:141] =  fastdata[1:0];
- assign ila_data[143] =  reg_ad_enble;
- assign ila_data[159:144] =  reg_ad1_data[15:00];
- assign ila_data[175:160] =  freq1_cnt[15:00];
- assign ila_data[191:176] =  freq2_cnt[15:00];
- assign ila_data[211:192] =  'b0;
+
+ assign ila_data[15:00] =  reg_ad1_data[15:00];
+ assign ila_data[31:16] =  muc_data[15:00];
+ assign ila_data[35:32] =  next_state0[3:00];
+ assign ila_data[44:36] =  muc_addr[8:00];
+ assign ila_data[45]    =  muc_we_n;
+ assign ila_data[47:46] =  adc_reset_o[1:0];
+ assign ila_data[55:48] =  fifo_rd_req[7:00];
+ assign ila_data[58:56] =  muc_rd_n_r[2:0];
+ assign ila_data[63:59] =  'b0;
+ assign ila_data[79:64] =  mcu_data_out[15:00];
+ assign ila_data[95:80] =  reg_freq1[15:00];
+ assign ila_data[111:96] =  reg_freq2[15:00];
+ assign ila_data[127:112] =  reg_ad8_data[15:00];
+ assign ila_data[143:128] =  freq1_cnt[15:00];
+ assign ila_data[159:144] =  freq2_cnt[15:00];
+ assign ila_data[161:160] =  ad_start[1:0];
+ assign ila_data[169:162] =  full[7:0];
+ assign ila_data[170] =  work_en;
+ assign ila_data[171] =  clr_fifo;
+ assign ila_data[172] =  reg_ad_enble;
+ assign ila_data[174:173] =  adc_convst_a_o[1:0];
+ assign ila_data[176:175] =  adc_convst_b_o[1:0];
+ assign ila_data[178:177] =  adc_busy_i[1:0];
+ assign ila_data[179] =  muc_cs_n;
+ assign ila_data[180] =  muc_rd_n;
+ assign ila_data[210:181] =  Phase_cnt_out[29:0];
+ assign ila_data[211] =  Phase_valid;
+
 
 
 endmodule

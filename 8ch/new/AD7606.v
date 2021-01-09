@@ -97,7 +97,7 @@ module AD7606
     output              	adc_range_o		,    		// ADC RANGE signal
     output  reg         	adc_cs_n_o		,     		// ADC CS signal
     output  reg         	adc_rd_n_o		,     		// ADC RD signal
-    output  reg         	adc_reset_o		,    		// ADC RESET signal
+    output  reg         	adc_reset_o = 'b0		,    		// ADC RESET signal
  //   output              	adc_stdby_o		,    		// 硬锟斤拷为锟斤拷锟
     output  	        	adc_convst_a_o	,    		// ADC CONVST signal
     output  	        	adc_convst_b_o  ,			// ADC CONVST signal
@@ -109,9 +109,9 @@ reg     [9:00]  delay_cov;
 wire 	fpga_clk_i							;
 assign 	fpga_clk_i = clk_40M				;
 	
-assign	adc_convst_a_o = adc_convst_o && delay_cov[0] 		;
+assign	adc_convst_a_o = adc_convst_o && delay_cov[0] && delay_cov[1]		;
 
-assign	adc_convst_b_o = adc_convst_o && delay_cov[0]		;
+assign	adc_convst_b_o = adc_convst_o && delay_cov[0]&& delay_cov[1]		;
 always@(posedge fpga_clk_i)
     delay_cov  <= {delay_cov[8:0],adc_convst_o};
 
@@ -189,7 +189,7 @@ assign channel      = 3'd4;//data_i_s[7:5];
 
  reg reset_n_i ;
 
-reg		[7:0] cnt_rst;
+reg		[7:0] cnt_rst = 'b0;
 
 always@(posedge fpga_clk_i)
 	if(cnt_rst <8'hFE) begin
@@ -198,7 +198,13 @@ always@(posedge fpga_clk_i)
 	else begin
 		cnt_rst <= cnt_rst ;
 		reset_n_i <= 1'b1; end 
-
+always@(posedge fpga_clk_i)
+     if(cnt_rst >= 8'hE0 && cnt_rst <= 8'hF0)
+		adc_reset_o <= 'b1;
+	 else 
+		adc_reset_o <= 'b0;
+		
+    
 
 
 
@@ -343,7 +349,7 @@ always @(posedge fpga_clk_i,negedge reset_n_i)
 begin
     if(reset_n_i == 0)
     begin
-        adc_reset_o <= 1'b1;
+    //    adc_reset_o <= 1'b1;
         data_i_s    <= 16'h83;//16'h2;       // By default, the ADC is not in standby
     end
     
@@ -360,7 +366,7 @@ begin
                 adc_rd_n_o      <= 1'b1;
                 adc_convst_o    <= 1'b1;
 //                data_rd_ready_o <= 1'b0;
-                adc_reset_o     <= 1'b0;
+          //      adc_reset_o     <= 1'b0;
                 channel_read    <= 3'h0;
                 sync_o          <= 1'h1;
                 delay_cs        <= 1'h0;
@@ -373,7 +379,7 @@ begin
                 adc_convst_o    <= 1'b0;
                 data_wr_ready_o <= 1'b0;
  //               data_rd_ready_o <= 1'b0;
-                adc_reset_o     <= 1'b0;
+           //     adc_reset_o     <= 1'b0;
                 sync_o          <= 1'h1;
                 delay_cs        <= 1'h0;
             end
@@ -384,7 +390,7 @@ begin
                 adc_convst_o    <= 1'b1;
                 data_wr_ready_o <= 1'b0;
 //                data_rd_ready_o <= 1'b0;
-                adc_reset_o     <= 1'b0;
+            //    adc_reset_o     <= 1'b0;
                 sync_o          <= 1'h0;
                 delay_cs        <= 1'h0;
             end
@@ -395,7 +401,7 @@ begin
                 adc_convst_o    <= 1'b1;
                 data_wr_ready_o <= 1'b0;
  //               data_rd_ready_o <= 1'b0;
-                adc_reset_o     <= 1'b0;
+           //     adc_reset_o     <= 1'b0;
                 sync_o          <= 1'h0;
                 delay_cs        <= 1'h0;
             end
@@ -406,7 +412,7 @@ begin
                 adc_convst_o    <= 1'b1;
                 data_wr_ready_o <= 1'b0;
  //               data_rd_ready_o <= 1'b0;
-                adc_reset_o     <= 1'b0;
+          //      adc_reset_o     <= 1'b0;
                 sync_o          <= 1'h0;
                 delay_cs        <= 1'h1;
             end
@@ -418,7 +424,7 @@ begin
                 data_o          <= adc_db_i +16'h7fff;
                 data_wr_ready_o <= 1'b0;
  //               data_rd_ready_o <= 1'b0;
-                adc_reset_o     <= 1'b0;
+           //     adc_reset_o     <= 1'b0;
                 sync_o          <= 1'h0;
                 delay_cs        <= 1'h0;
             end
@@ -429,7 +435,7 @@ begin
                 adc_convst_o    <= 1'b1;
                 data_wr_ready_o <= 1'b0;
 //                data_rd_ready_o <= 1'b1;
-                adc_reset_o     <= 1'b0;
+          //      adc_reset_o     <= 1'b0;
                 sync_o          <= 1'h0;
                 channel_read    <= channel_read + 3'h1;
                 delay_cs        <= 1'h0;
@@ -441,7 +447,7 @@ begin
                 adc_convst_o    <= 1'b1;
                 data_wr_ready_o <= 1'b0;
 //                data_rd_ready_o <= 1'b0;
-                adc_reset_o     <= 1'b0;
+          //      adc_reset_o     <= 1'b0;
                 sync_o          <= 1'h0;
                 delay_cs        <= 1'h0;
             end

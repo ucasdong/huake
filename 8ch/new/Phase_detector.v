@@ -5,7 +5,7 @@ module Phase_detector(
 			input				clk								,
 			input				Phase_in						,
 		   output  reg       Phase_valid,
-			output reg	[31:0]	Phase_cnt_out =1'b0
+			output reg	[31:0]	Phase_cnt_out =32'd20000000
 		);
 			reg		[31:0]	Phase_cnt 	= 1'b0		;
 			reg		[2:0]	state 		= 1'b0		;//״̬��
