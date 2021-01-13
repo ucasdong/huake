@@ -109,9 +109,9 @@ reg     [9:00]  delay_cov;
 wire 	fpga_clk_i							;
 assign 	fpga_clk_i = clk_40M				;
 	
-assign	adc_convst_a_o = adc_convst_o && delay_cov[0] && delay_cov[1]		;
+assign	adc_convst_a_o = adc_convst_o 	;
 
-assign	adc_convst_b_o = adc_convst_o && delay_cov[0]&& delay_cov[1]		;
+assign	adc_convst_b_o = adc_convst_o 		;
 always@(posedge fpga_clk_i)
     delay_cov  <= {delay_cov[8:0],adc_convst_o};
 
@@ -127,6 +127,7 @@ wire 	[2:0] channel						;     			// used to configure the number of channels to
 
 //----------reg-----------
 reg        	 adc_convst_o					;
+reg          [3:0]      wait_cnt            ;
 
 //------------------------------------------------------------------------------
 //----------- Registers Declarations -------------------------------------------
@@ -288,13 +289,14 @@ begin
     //ADC write states
         ADC_START_CONV_STATE:
         begin
-            adc_next_state = ADC_START_CONV_STATE_W;
-        end
-	
-        ADC_START_CONV_STATE_W:
-        begin
+		    if(wait_cnt == 'd4)
             adc_next_state = ADC_WAIT_BUSY_HIGH_STATE;
         end
+	
+/*         ADC_START_CONV_STATE_W:
+        begin
+            adc_next_state = ADC_WAIT_BUSY_HIGH_STATE;
+        end */
 	
         ADC_WAIT_BUSY_HIGH_STATE:
         begin
@@ -349,6 +351,7 @@ always @(posedge fpga_clk_i,negedge reset_n_i)
 begin
     if(reset_n_i == 0)
     begin
+	    wait_cnt <= 'b0;
     //    adc_reset_o <= 1'b1;
         data_i_s    <= 16'h83;//16'h2;       // By default, the ADC is not in standby
     end
@@ -374,6 +377,7 @@ begin
         //ADC write states
             ADC_START_CONV_STATE:
             begin
+			    wait_cnt        <= wait_cnt + 'b1;
                 adc_cs_n_o      <= 1'b1;
                 adc_rd_n_o      <= 1'b1;
                 adc_convst_o    <= 1'b0;
@@ -385,6 +389,7 @@ begin
             end
             ADC_WAIT_BUSY_HIGH_STATE:
             begin
+			    wait_cnt        <= 'b0 ;
                 adc_cs_n_o      <= 1'b1;
                 adc_rd_n_o      <= 1'b1;
                 adc_convst_o    <= 1'b1;

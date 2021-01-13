@@ -285,6 +285,11 @@ always@(posedge AD_CLK_40M)
 		wire					rd_en				;
 		wire					rd_ack		        ;
 		wire					sdram_rd_ack        ;
+	    wire    [15:00]         freq_w1             ;             
+	    wire    [15:00]         freq_w2             ;
+		assign   freq_w1 = (reg_freq1[1:0] == 'b00)?16'd1280 : (reg_freq1[1:0] == 'b01)? 16'd2560:(reg_freq1[1:0] == 'b10)?16'd5120 : 16'd10240 ;
+		assign   freq_w2 = (reg_freq1[3:2] == 'b00)?16'd1280 : (reg_freq1[3:2] == 'b01)? 16'd2560:(reg_freq1[3:2] == 'b10)?16'd5120 : 16'd10240 ;
+	
 		
 
 		
@@ -584,8 +589,8 @@ AD_CTL U4_AD_CTL
 `endif	
 	
 	.Phase_valid    (Phase_valid			),	
-    .reg_freq1		(reg_freq1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
-    .reg_freq2		(reg_freq2					),//(reg_freq2	16'd10000			), 
+    .reg_freq1		(freq_w1				),//(reg_freq1	16'd10000			), 用配置系数时用reg_freq1,用内部固定频率用10K即16'd10000
+    .reg_freq2		(freq_w2					),//(reg_freq2	16'd10000			), 
     .Phase_cnt_out	(Phase_cnt_out			), 
     .freq1_cnt	    (freq1_cnt			    ), 
     .freq2_cnt	    (freq2_cnt			    ), 
@@ -610,8 +615,8 @@ ila_my ila_my_inst (
 );	
 
 
- assign ila_data[15:00] =  reg_ad1_data[15:00];
- assign ila_data[31:16] =  muc_data[15:00];
+ assign ila_data[15:00] =  freq_w1[15:00];
+ assign ila_data[31:16] =  freq_w2[15:00];
  assign ila_data[35:32] =  next_state0[3:00];
  assign ila_data[44:36] =  muc_addr[8:00];
  assign ila_data[45]    =  muc_we_n;
@@ -635,8 +640,11 @@ ila_my ila_my_inst (
  assign ila_data[178:177] =  adc_busy_i[1:0];
  assign ila_data[179] =  muc_cs_n;
  assign ila_data[180] =  muc_rd_n;
- assign ila_data[210:181] =  Phase_cnt_out[29:0];
- assign ila_data[211] =  Phase_valid;
+ assign ila_data[182:181] =  fastdata[1:0];
+ assign ila_data[186:183] =  next_state1[3:0];
+ assign ila_data[188:187] =  adc_rd_n_o[1:0];
+ assign ila_data[190:189] =  adc_cs_n_o[1:0];
+ assign ila_data[211:191] =  'b0;
 
 
 

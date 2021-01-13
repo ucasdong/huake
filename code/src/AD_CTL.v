@@ -73,15 +73,15 @@ always@(posedge clk) begin
 		if(freq1_cnt == 32'd3 || freq1_cnt == 32'd4)begin
 		  
 			ad_start[1]	<= 1'b1;
-			ad_start[2]	<= 1'b1; end
+			  end
 		else begin
 			ad_start[1]	<= 1'b0;
-			ad_start[2]	<= 1'b0;end
+			 end
 			
-/* 		if(freq2_cnt == 32'd3 || freq2_cnt == 32'd4)
+ 		if(freq2_cnt == 32'd3 || freq2_cnt == 32'd4)
 			ad_start[2]	<= 1'b1;
 		else
-			ad_start[2]	<= 1'b0; */
+			ad_start[2]	<= 1'b0; 
 		
 		if(freq3_cnt == 32'd3 || freq3_cnt == 32'd4)
 			ad_start[3]	<= 1'b1;
